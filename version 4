@@ -1,0 +1,79 @@
+import pandas as pd
+import statsmodels.api as sm
+import numpy
+import math
+compustat_data = pd.read_csv('fama v3.csv')
+import akshare as ak
+stockdata=ak.stock_us_spot_em()['代码']
+datasum=pd.DataFrame()
+datasum=pd.DataFrame()
+for i in range(len(stockdata)):
+    a = stockdata[i]
+    stock_us_hist_df = ak.stock_us_hist(symbol=a, period="monthly", start_date="20220101", end_date="20220331", adjust="qfq")
+    stock_us_hist_df['ticker']=a 
+    datasum = datasum.append(stock_us_hist_df)
+if compustat_data.shape == (0,16):
+     pd.read_csv('fama v3.csv')
+if stock_us_hist_df.shape == (0,12):
+    ak.stock_us_spot_em()['代码']
+full_price_data=pd.DataFrame(['datasum']).to_csv('full_price_data')
+monthly_price=datasum[['日期','ticker','涨跌幅','开盘','收盘']]
+monthly_price['quarter_return']=monthly_price['涨跌幅']/100+1
+bs_data=compustat_data[['tic','datacqtr','atq','ltq','mkvaltq']]
+bs_data['BM_ratio']=(bs_data['atq']-bs_data['ltq'])/bs_data['mkvaltq']
+monthly_price['ticker'] =monthly_price['ticker'].str.replace(r'105.', '').astype(str)
+monthly_price.rename(columns={'ticker':'tic'},inplace=True)
+dataframe_a=monthly_price.groupby('tic').prod('column_a')
+merged_table=pd.merge(dataframe_a,bs_data,on='tic',how='inner')
+ME_50=numpy.percentile(merged_table['mkvaltq'],50)
+BEME_30=numpy.percentile(merged_table['BM_ratio'],30)
+BEME_70=numpy.percentile(merged_table['BM_ratio'],70)
+
+small_value=merged_table[(merged_table['BM_ratio']>BEME_70) & (merged_table['mkvaltq']<ME_50)]
+try:
+    small_value_return=numpy.average(small_value['quarter_return'],weights=small_value['mkvaltq'])
+    print(small_value_return)
+except ZeroDivisionError:
+    print("zero division error")
+    
+big_value = merged_table[(merged_table['BM_ratio']>BEME_70) & (merged_table['mkvaltq']>ME_50)]
+try:
+   big_value_return=numpy.average(big_value['quarter_return'],weights=big_value['mkvaltq'])
+   print(big_value_return)
+except ZeroDivisionError:
+    print("zero division error")
+    
+small_neutral=merged_table[(merged_table['BM_ratio']>BEME_30) & (merged_table['mkvaltq']<ME_50) &  
+                         (merged_table['BM_ratio']<BEME_70)]
+try:
+    small_neutral_return=numpy.average(small_neutral['quarter_return'],weights=small_neutral['mkvaltq'])
+    print(small_neutral_return)
+except ZeroDivisionError:
+    print("zero division error")
+    
+big_neutral=merged_table[(merged_table['BM_ratio']>BEME_30) & (merged_table['mkvaltq']>ME_50) & 
+                         (merged_table['BM_ratio']<BEME_70)]
+try:
+    big_neutral_return=numpy.average(big_neutral['quarter_return'],weights=big_neutral['mkvaltq'])
+    print(big_neutral_return)
+except ZeroDivisionError:
+    print("zero division error")
+    
+small_growth=merged_table[(merged_table['BM_ratio']<BEME_30) & (merged_table['mkvaltq']<ME_50)]
+try:
+    small_growth_return = numpy.average(small_growth['quarter_return'],weights=small_growth['mkvaltq'])
+    print(small_growth_return)
+except ZeroDivisionError:
+    print("zero division error")
+    
+big_growth=merged_table[(merged_table['BM_ratio']<BEME_30) & (merged_table['mkvaltq']>ME_50)]
+try:
+    big_growth_return=numpy.average(big_growth['quarter_return'],weights=big_growth['mkvaltq'])
+    print(big_growth_return)
+except ZeroDivisionError:
+    print("zero division error")
+    
+SMB_value=1/3*(small_value_return+small_neutral_return+small_growth_return)- 1/3*(big_value_return+big_neutral_return+big_growth_return)
+SMB_value
+HML_value=1/2*(small_value_return+big_value_return)-1/2*(small_growth_return+big_growth_return)
+HML_value
